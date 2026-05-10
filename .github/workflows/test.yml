@@ -20,6 +20,12 @@ jobs:
         ports:
           - 5432:5432
 
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
 
       - name: Checkout code
@@ -34,6 +40,28 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Wait for PostgreSQL
+        run: sleep 10
+
+      - name: Install PostgreSQL Client
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Create users table
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d ecommerce_test -c "
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100),
+            email VARCHAR(100)
+          );"
+
+      - name: Fix Jest Permissions
+        run: |
+          chmod -R +x node_modules/.bin
+          chmod +x ./node_modules/.bin/jest
+
       - name: Run tests
         env:
           PGUSER: postgres
@@ -42,4 +70,4 @@ jobs:
           PGPASSWORD: postgres
           PGPORT: 5432
 
-        run: npm test
+        run: npx jest
